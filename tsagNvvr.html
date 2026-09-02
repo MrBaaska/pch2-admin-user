@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="mn">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Монгол Улсын Төмөр Замын Сүлжээ - Цаг агаар ба Хугацаа</title>
+<style>
+  * {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+  }
+
+  body {
+    background-color: #050510;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    font-family: 'Arial', sans-serif;
+    color: #fff;
+    overflow: hidden;
+  }
+
+  /* Main container holding the map background */
+  .dashboard-container {
+    position: relative;
+    width: 90vw;
+    max-width: 1200px;
+    aspect-ratio: 16 / 9;
+    background-image: url('download.png'); /* Replace with actual image path if needed */
+    background-size: cover;
+    background-position: center;
+    border-radius: 16px;
+    box-shadow: 0 0 30px rgba(0, 150, 255, 0.4);
+    border: 1px solid rgba(0, 200, 255, 0.3);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    padding: 20px;
+  }
+
+  /* Light overlay keeps the map visible while preserving text contrast. */
+  .dashboard-container::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(2, 4, 15, 0.25);
+    z-index: 1;
+  }
+
+  /* Ensure content stays above overlay */
+  .top-bar, .bottom-bar, .center-clock {
+    position: relative;
+    z-index: 2;
+  }
+
+  /* Top Bar: Title & Weather */
+  .top-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: rgba(10, 15, 35, 0.42);
+    padding: 12px 25px;
+    border-radius: 12px;
+    backdrop-filter: blur(4px);
+    border: 1px solid rgba(0, 200, 255, 0.2);
+  }
+
+  .main-title {
+    font-size: 1.5rem;
+    font-weight: bold;
+    color: #7df9ff;
+    text-shadow: 0 0 10px rgba(0, 200, 255, 0.5);
+  }
+
+  .weather-box {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 1.1rem;
+  }
+
+  .weather-temp {
+    font-weight: bold;
+    color: #ffcc00;
+    text-shadow: 0 0 8px rgba(255, 204, 0, 0.4);
+  }
+
+  /* Center Clock & Flip Mechanics */
+  .center-clock {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    margin: auto 0;
+  }
+
+  .clock-container {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+  }
+
+  .time-group {
+    display: flex;
+    gap: 4px;
+  }
+
+  /* Flip Digit Card Styling */
+  .flip-card {
+    position: relative;
+    width: 55px;
+    height: 75px;
+    background: rgba(11, 19, 43, 0.72);
+    border-radius: 8px;
+    font-size: 3rem;
+    font-weight: bold;
+    color: #00ffff;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.5);
+    border: 1px solid rgba(0, 255, 255, 0.3);
+    text-shadow: 0 0 10px rgba(0, 255, 255, 0.6);
+  }
+
+  .time-separator {
+    font-size: 3rem;
+    font-weight: bold;
+    color: #00ffff;
+    animation: blink 1s infinite;
+    text-shadow: 0 0 10px rgba(0, 255, 255, 0.6);
+  }
+
+  @keyframes blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+  }
+
+  /* Bottom Bar: Full Date & Day Info */
+  .bottom-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: rgba(10, 15, 35, 0.42);
+    padding: 12px 25px;
+    border-radius: 12px;
+    backdrop-filter: blur(4px);
+    border: 1px solid rgba(0, 200, 255, 0.2);
+    font-size: 1.1rem;
+  }
+
+  .date-info {
+    display: flex;
+    gap: 15px;
+    font-weight: 500;
+  }
+
+  .day-name {
+    color: #ff758c;
+    font-weight: bold;
+    text-shadow: 0 0 8px rgba(255, 117, 140, 0.4);
+  }
+</style>
+</head>
+<body>
+
+<div class="dashboard-container">
+    <div class="top-bar">
+        <div class="main-title">Замын 2-р анги Хяналтын самбар</div>
+        <div class="weather-box">
+            <span>⛅ Улаанбаатар</span>
+            <span class="weather-temp" id="weather-temp">+22°C</span>
+        </div>
+    </div>
+
+    <div class="center-clock">
+        <div class="clock-container">
+            <div class="time-group">
+                <div class="flip-card" id="hour-tens">0</div>
+                <div class="flip-card" id="hour-ones">0</div>
+            </div>
+            <div class="time-separator">:</div>
+            <div class="time-group">
+                <div class="flip-card" id="min-tens">0</div>
+                <div class="flip-card" id="min-ones">0</div>
+            </div>
+            <div class="time-separator">:</div>
+            <div class="time-group">
+                <div class="flip-card" id="sec-tens">0</div>
+                <div class="flip-card" id="sec-ones">0</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="bottom-bar">
+        <div class="date-info">
+            <span id="current-year">2026</span> оны 
+            <span id="current-month">06</span> дүгээр сарын 
+            <span id="current-day">07</span>
+        </div>
+        <div class="day-name" id="current-weekday">Ням гариг</div>
+    </div>
+</div>
+
+<script>
+  // Mongolian Weekday names
+  const weekdays = ['Ням гариг', 'Даваа гариг', 'Мягмар гариг', 'Лхагва гариг', 'Пүрэв гариг', 'Баасан гариг', 'Бямба гариг'];
+
+  function updateClockAndDate() {
+    const now = new Date();
+
+    // Time values
+    const hours = String(now.getHours()).padStart(2, '0');
+    const minutes = String(now.getMinutes()).padStart(2, '0');
+    const seconds = String(now.getSeconds()).padStart(2, '0');
+
+    // Update digits with simple flip/refresh simulation
+    updateDigit('hour-tens', hours[0]);
+    updateDigit('hour-ones', hours[1]);
+    updateDigit('min-tens', minutes[0]);
+    updateDigit('min-ones', minutes[1]);
+    updateDigit('sec-tens', seconds[0]);
+    updateDigit('sec-ones', seconds[1]);
+
+    // Date values
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    const weekday = weekdays[now.getDay()];
+
+    document.getElementById('current-year').textContent = year;
+    document.getElementById('current-month').textContent = month;
+    document.getElementById('current-day').textContent = day;
+    document.getElementById('current-weekday').textContent = weekday;
+  }
+
+  function updateDigit(elementId, newValue) {
+    const el = document.getElementById(elementId);
+    if (el.textContent !== newValue) {
+      el.style.transform = 'rotateX(90deg)';
+      el.style.transition = 'transform 0.15s ease-in';
+      setTimeout(() => {
+        el.textContent = newValue;
+        el.style.transform = 'rotateX(0deg)';
+        el.style.transition = 'transform 0.15s ease-out';
+      }, 150);
+    }
+  }
+
+  // Initial call and set interval every second
+  updateClockAndDate();
+  setInterval(updateClockAndDate, 1000);
+</script>
+
+</body>
+</html>

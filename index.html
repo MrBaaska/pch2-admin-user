@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="mn">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Төмөр замын хэсгүүдийн Admin систем</title>
+  <meta name="description" content="20 хэсгийн бүртгэлийн системд нэг цэгээс нэвтрэх удирдлагын самбар" />
+
+  <!-- Tailwind CDN (build step шаардлагагүй, GitHub Pages дээр шууд ажиллана) -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="./style.css" />
+</head>
+<body class="min-h-screen text-slate-800 antialiased">
+
+  <div class="flex min-h-screen">
+
+    <!-- ============ SIDEBAR ============ -->
+    <aside class="hidden w-64 shrink-0 flex-col border-r border-slate-200 bg-[#0B2E4E] lg:flex">
+      <div class="flex h-16 items-center gap-2.5 px-5 border-b border-white/10">
+        <span class="flex h-8 w-8 items-center justify-center rounded-md bg-white/10 text-white">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" class="h-4.5 w-4.5">
+            <path d="M4 17V7a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v10" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+            <path d="M4 17h16M7 17v2M17 17v2M7 12h10" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+            <circle cx="8.5" cy="9" r="1" fill="currentColor"/>
+            <circle cx="15.5" cy="9" r="1" fill="currentColor"/>
+          </svg>
+        </span>
+        <span class="font-display text-sm font-semibold tracking-tight text-white">Хяналтын цэс</span>
+      </div>
+
+      <nav class="custom-scroll flex-1 overflow-y-auto px-3 py-5">
+        <p class="px-2 text-xs font-medium uppercase tracking-wide text-white/40">Ерөнхий</p>
+        <a href="#" id="nav-dashboard" class="mt-2 flex items-center gap-2.5 rounded-lg bg-white/10 px-3 py-2 text-sm font-medium text-white">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" class="h-4 w-4"><rect x="3" y="3" width="7" height="7" rx="1.2" stroke="currentColor" stroke-width="1.8"/><rect x="14" y="3" width="7" height="7" rx="1.2" stroke="currentColor" stroke-width="1.8"/><rect x="3" y="14" width="7" height="7" rx="1.2" stroke="currentColor" stroke-width="1.8"/><rect x="14" y="14" width="7" height="7" rx="1.2" stroke="currentColor" stroke-width="1.8"/></svg>
+          Dashboard
+        </a>
+
+        <p class="mt-6 px-2 text-xs font-medium uppercase tracking-wide text-white/40">Хэсгүүд</p>
+        <div class="mt-2 px-2">
+          <label for="sidebar-project-select" class="sr-only">Хэсэг сонгох</label>
+          <select
+            id="sidebar-project-select"
+            class="w-full rounded-lg border border-white/10 bg-white/10 px-3 py-2 text-sm text-white focus:border-white/30 [&>option]:text-slate-900"
+          >
+            <option value="">Хэсэг сонгох…</option>
+            <!-- JS-ээр projects.js-ээс автоматаар бөглөнө -->
+          </select>
+        </div>
+      </nav>
+
+      <div class="border-t border-white/10 px-5 py-4 text-xs text-white/40">
+        © <span id="footer-year"></span> Төмөр замын байгууллага
+      </div>
+    </aside>
+
+    <!-- ============ MAIN ============ -->
+    <div class="flex min-w-0 flex-1 flex-col">
+
+      <!-- Top bar -->
+      <header class="sticky top-0 z-20 flex h-16 items-center justify-between gap-4 border-b border-slate-200 bg-white/90 px-4 backdrop-blur sm:px-6">
+        <div class="flex items-center gap-3">
+          <span class="flex h-8 w-8 items-center justify-center rounded-md bg-[#0B2E4E] text-white lg:hidden">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" class="h-4 w-4"><path d="M4 17V7a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v10" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M4 17h16" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+          </span>
+          
+        </div>
+
+        <div class="flex items-center gap-4">
+          <div class="hidden text-right sm:block">
+            <p class="font-mono text-sm font-semibold text-slate-900" id="live-clock">--:--:--</p>
+            <p class="text-xs text-slate-500" id="live-date">----.--.-- · ---</p>
+          </div>
+          <span class="hidden h-9 w-px bg-slate-200 sm:block"></span>
+          <div class="flex h-9 w-9 items-center justify-center rounded-full bg-slate-100 text-sm font-semibold text-slate-600">
+            АД
+          </div>
+        </div>
+      </header>
+
+      <main class="flex-1 px-4 py-6 sm:px-6 lg:px-8">
+
+        <!-- Filters -->
+        <section class="mt-6 flex flex-col gap-3 rounded-xl border border-slate-200 bg-white p-4 sm:flex-row sm:items-center" aria-label="Хайх, шүүх">
+          <div class="relative flex-1">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400">
+              <circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="1.8"/><path d="m20 20-3.2-3.2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+            </svg>
+            <label for="search-input" class="sr-only">Хэсэг хайх</label>
+            <input
+              id="search-input"
+              type="search"
+              placeholder="Дугаар эсвэл нэрээр хайх… (жишээ: 5, эсвэл 5-р хэсэг)"
+              class="w-full rounded-lg border border-slate-200 bg-slate-50 py-2.5 pl-9 pr-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-[#0B2E4E] focus:bg-white"
+            />
+          </div>
+
+          <div class="flex gap-2">
+            <label for="status-filter" class="sr-only">Төлөвөөр шүүх</label>
+            <select id="status-filter" class="rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-700 focus:border-[#0B2E4E]">
+              <option value="all">Бүх төлөв</option>
+              <option value="active">Идэвхтэй</option>
+              <option value="maintenance">Засвартай</option>
+              <option value="inactive">Идэвхгүй</option>
+            </select>
+
+            <label for="sort-select" class="sr-only">Эрэмбэлэх</label>
+            <select id="sort-select" class="rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-700 focus:border-[#0B2E4E]">
+              <option value="id-asc">Дугаар ↑</option>
+              <option value="id-desc">Дугаар ↓</option>
+              <option value="name-asc">Нэрээр</option>
+            </select>
+
+            <button id="view-all-btn" type="button" class="rounded-lg border border-slate-200 px-3 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50">
+              Бүгдийг харах
+            </button>
+          </div>
+        </section>
+
+        <p class="mt-4 text-sm text-slate-500" id="results-count">20 / 20 хэсэг харагдаж байна</p>
+
+        <!-- Grid -->
+        <section class="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3" id="project-grid" aria-live="polite">
+          <!-- app.js-ээр динамикаар үүснэ -->
+        </section>
+
+        <!-- Empty state -->
+        <div id="empty-state" class="hidden mt-6 flex flex-col items-center justify-center rounded-xl border border-dashed border-slate-300 bg-white py-16 text-center">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" class="h-10 w-10 text-slate-300">
+            <circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="1.6"/><path d="m20 20-3.2-3.2" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+          </svg>
+          <p class="mt-3 text-sm font-medium text-slate-700">Тохирох хэсэг олдсонгүй</p>
+          <p class="mt-1 text-sm text-slate-500">Хайлт эсвэл шүүлтүүрээ өөрчилж дахин оролдоно уу.</p>
+        </div>
+
+        <!-- ============ SUPABASE LINK MANAGEMENT ============ -->
+        <section class="mt-10" aria-label="Төслийн холбоосын удирдлага">
+          <div class="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h2 class="font-display text-lg font-semibold text-slate-900">Хэрэглэгчийн холбоосууд (Supabase)</h2>
+              <p class="text-sm text-slate-500">Project ID үүсгэж, хуваалцаад, ирсэн өгөгдлийг эндээс шууд харна.</p>
+            </div>
+            <button id="create-link-btn" type="button" class="inline-flex items-center justify-center gap-1.5 rounded-lg bg-[#0B2E4E] px-4 py-2.5 text-sm font-medium text-white hover:bg-[#0d3a63]">
+              + Шинэ холбоос үүсгэх
+            </button>
+          </div>
+
+          <!-- Newly created link result -->
+          <div id="new-link-result" class="mt-3 hidden items-center justify-between gap-3 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm">
+            <div>
+              <span class="font-medium text-emerald-800">Шинэ холбоос: </span>
+              <span id="new-link-id" class="font-mono font-semibold text-emerald-900"></span>
+              <span class="ml-2 break-all text-emerald-700" id="new-link-url"></span>
+            </div>
+            <button id="new-link-copy" type="button" class="shrink-0 rounded-md bg-emerald-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-emerald-700">Хуулах</button>
+          </div>
+
+          <!-- Filters -->
+          <div class="mt-4 flex flex-col gap-3 rounded-xl border border-slate-200 bg-white p-4 sm:flex-row sm:flex-wrap sm:items-center">
+            <label for="link-filter-id" class="sr-only">Project ID хайх</label>
+            <input id="link-filter-id" type="search" placeholder="Project ID (жишээ: A001)" class="flex-1 min-w-[140px] rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-[#0B2E4E] focus:bg-white" />
+
+            <label for="link-filter-name" class="sr-only">Нэрээр хайх</label>
+            <input id="link-filter-name" type="search" placeholder="Хэрэглэгчийн нэр" class="flex-1 min-w-[140px] rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-[#0B2E4E] focus:bg-white" />
+
+            <label for="link-filter-status" class="sr-only">Төлөвөөр шүүх</label>
+            <select id="link-filter-status" class="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 focus:border-[#0B2E4E]">
+              <option value="all">Бүх төлөв</option>
+              <option value="Empty">Хоосон</option>
+              <option value="In Progress">Явагдаж буй</option>
+              <option value="Completed">Дууссан</option>
+            </select>
+
+            <label for="link-filter-from" class="sr-only">Эхлэх огноо</label>
+            <input id="link-filter-from" type="date" class="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 focus:border-[#0B2E4E]" />
+            <label for="link-filter-to" class="sr-only">Дуусах огноо</label>
+            <input id="link-filter-to" type="date" class="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 focus:border-[#0B2E4E]" />
+
+            <button id="link-filter-reset" type="button" class="rounded-lg border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">Цэвэрлэх</button>
+          </div>
+
+          <p class="mt-3 text-sm text-slate-500" id="links-results-count">Ачаалж байна…</p>
+
+          <div class="mt-3 overflow-x-auto rounded-xl border border-slate-200 bg-white">
+            <table class="min-w-full divide-y divide-slate-200 text-sm">
+              <thead class="bg-slate-50">
+                <tr class="text-left text-xs font-medium uppercase tracking-wide text-slate-500">
+                  <th class="px-4 py-3">Project ID</th>
+                  <th class="px-4 py-3">Холбоос</th>
+                  <th class="px-4 py-3">Төлөв</th>
+                  <th class="px-4 py-3">Үүсгэсэн</th>
+                  <th class="px-4 py-3">Шинэчилсэн</th>
+                  <th class="px-4 py-3">Үйлдэл</th>
+                </tr>
+              </thead>
+              <tbody id="links-table-body" class="divide-y divide-slate-100"></tbody>
+            </table>
+          </div>
+          <div id="links-empty-state" class="hidden mt-3 rounded-xl border border-dashed border-slate-300 bg-white py-10 text-center text-sm text-slate-500">Тохирох холбоос олдсонгүй.</div>
+        </section>
+
+        <footer class="mt-10 border-t border-slate-200 pt-6 text-center text-xs text-slate-400">
+          Энэ Admin систем нь зөвхөн навигацийн зориулалттай бөгөөд 20 хэсгийн дотоод өгөгдөл, LocalStorage-д хандахгүй.
+        </footer>
+      </main>
+    </div>
+  </div>
+
+  <!-- ============ DETAIL MODAL ============ -->
+  <div id="detail-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4" role="dialog" aria-modal="true" aria-labelledby="detail-modal-title">
+    <div class="modal-panel custom-scroll relative max-h-[90vh] w-full max-w-md overflow-y-auto rounded-xl bg-white p-6 shadow-xl">
+      <button
+        id="detail-modal-close"
+        type="button"
+        aria-label="Хаах"
+        class="absolute right-4 top-4 flex h-8 w-8 items-center justify-center rounded-full text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" class="h-4 w-4"><path d="M6 6l12 12M18 6 6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+      </button>
+      <div id="detail-modal-body"><!-- app.js-ээр бөглөнө --></div>
+    </div>
+  </div>
+
+  <!-- ============ SUBMISSION VIEW MODAL ============ -->
+  <div id="submission-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4" role="dialog" aria-modal="true" aria-labelledby="submission-modal-title">
+    <div class="modal-panel custom-scroll relative max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-xl bg-white p-6 shadow-xl">
+      <button
+        id="submission-modal-close"
+        type="button"
+        aria-label="Хаах"
+        class="absolute right-4 top-4 flex h-8 w-8 items-center justify-center rounded-full text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" class="h-4 w-4"><path d="M6 6l12 12M18 6 6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+      </button>
+      <div id="submission-modal-body"><!-- admin-links.js-ээр бөглөнө --></div>
+    </div>
+  </div>
+
+  <!-- ============ RIGHT-SIDE SCREEN: tsagNvvr.html ============ -->
+  <aside
+    id="dashboard-screen-panel"
+    class="fixed right-0 top-0 z-40 flex h-full w-full max-w-xl translate-x-full flex-col border-l border-slate-200 bg-[#050510] shadow-xl transition-transform duration-300"
+    aria-hidden="true"
+  >
+    <div class="flex items-center justify-between border-b border-white/10 px-4 py-3">
+      <p class="text-xs font-medium uppercase tracking-wide text-white/50">Dashboard — Цаг агаар</p>
+      <button
+        id="dashboard-screen-close"
+        type="button"
+        aria-label="Хаах"
+        class="flex h-8 w-8 items-center justify-center rounded-full text-white/60 hover:bg-white/10 hover:text-white"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" class="h-4 w-4"><path d="M6 6l12 12M18 6 6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+      </button>
+    </div>
+    <iframe id="dashboard-screen-frame" title="Цаг агаар" class="h-full w-full flex-1 border-0"></iframe>
+  </aside>
+
+  <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+  <script src="./projects.js"></script>
+  <script src="./app.js"></script>
+  <script src="./supabase-config.js"></script>
+  <script src="./admin-links.js"></script>
+  <script>
+    document.getElementById("footer-year").textContent = new Date().getFullYear();
+
+    // Sidebar-т 20 хэсгийг сонголт (select) хэлбэрээр автоматаар бөглөнө
+    document.addEventListener("DOMContentLoaded", function () {
+      const select = document.getElementById("sidebar-project-select");
+      projects.forEach(function (p) {
+        const option = document.createElement("option");
+        option.value = p.url;
+        option.textContent = p.name;
+        select.appendChild(option);
+      });
+      select.addEventListener("change", function () {
+        if (select.value) {
+          window.open(select.value, "_blank", "noopener,noreferrer");
+          select.value = "";
+        }
+      });
+    });
+  </script>
+</body>
+</html>
