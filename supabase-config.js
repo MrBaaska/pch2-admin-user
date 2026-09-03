@@ -14,8 +14,8 @@
  * ----------------------------------------------------------------
  */
 
-const SUPABASE_URL = "https://YOUR-PROJECT-REF.supabase.co"; // TODO: replace
-const SUPABASE_ANON_KEY = "YOUR-PUBLIC-ANON-KEY"; // TODO: replace
+const SUPABASE_URL = "https://jwsynpxhccartmavxdgx.supabase.co";
+const SUPABASE_ANON_KEY = "sb_publishable_AeK3LEekqFM1pNA5u9Bbyw_jxjuEpjn";
 const USER_PROJECT_BASE_URL = "https://YOUR-GITHUB-PAGE/"; // TODO: replace (must end with "/")
 
 // Storage bucket that holds files/images uploaded by the user project (if any).
