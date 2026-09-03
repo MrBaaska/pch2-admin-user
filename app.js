@@ -11,6 +11,8 @@
 (function () {
   "use strict";
 
+  const { escapeHtml, escapeAttr, setSafeHref, AdminReady } = window.SecurityUtils;
+
   // ---------------------------------------------------------------
   // State
   // ---------------------------------------------------------------
@@ -25,7 +27,11 @@
   // ---------------------------------------------------------------
   const els = {};
 
-  document.addEventListener("DOMContentLoaded", init);
+  // Wait for both the DOM and the admin-auth verification before doing
+  // any work, so nothing renders/queries ahead of the admin gate.
+  document.addEventListener("DOMContentLoaded", function () {
+    AdminReady.onReady(init);
+  });
 
   function init() {
     cacheDom();
@@ -96,7 +102,9 @@
       e.preventDefault();
       openDashboardScreen();
     });
-    els.dashboardClose.addEventListener("click", closeDashboardScreen);
+    if (els.dashboardClose) {
+      els.dashboardClose.addEventListener("click", closeDashboardScreen);
+    }
   }
 
   // ---------------------------------------------------------------
@@ -220,7 +228,7 @@
 
       <div class="mt-4 flex items-center gap-2 border-t border-slate-100 pt-4">
         <a
-          href="${escapeAttr(project.url)}"
+          data-role="open-link"
           target="_blank"
           rel="noopener noreferrer"
           class="inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-[#0B2E4E] px-3 py-2 text-sm font-medium text-white transition hover:bg-[#0d3a63] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0B2E4E]"
@@ -237,6 +245,10 @@
       </div>
     `;
 
+    // href is set via the DOM API (not string interpolation) and only
+    // after protocol validation, so javascript:/data:/vbscript: values
+    // in project.url can never execute.
+    setSafeHref(article.querySelector('[data-role="open-link"]'), project.url);
     article.querySelector('[data-action="view"]').addEventListener("click", () => openDetailModal(project));
     return article;
   }
@@ -275,7 +287,7 @@
       </p>
       <div class="mt-5 flex gap-2">
         <a
-          href="${escapeAttr(project.url)}"
+          data-role="open-link"
           target="_blank"
           rel="noopener noreferrer"
           class="inline-flex flex-1 items-center justify-center rounded-lg bg-[#0B2E4E] px-4 py-2.5 text-sm font-medium text-white hover:bg-[#0d3a63]"
@@ -284,6 +296,7 @@
         </a>
       </div>
     `;
+    setSafeHref(els.modalBody.querySelector('[data-role="open-link"]'), project.url);
     els.modal.classList.remove("hidden");
     els.modalClose.focus();
     document.body.style.overflow = "hidden";
@@ -323,16 +336,4 @@
     });
   }
 
-  // ---------------------------------------------------------------
-  // Utils
-  // ---------------------------------------------------------------
-  function escapeHtml(str) {
-    const div = document.createElement("div");
-    div.textContent = str;
-    return div.innerHTML;
-  }
-
-  function escapeAttr(str) {
-    return String(str).replace(/"/g, "&quot;");
-  }
 })();

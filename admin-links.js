@@ -20,6 +20,8 @@
 (function () {
   "use strict";
 
+  const { escapeHtml, escapeAttr, AdminReady } = window.SecurityUtils;
+
   const state = {
     projects: [], // [{ project_id, link, status(computed), created_at, updated_at, submissions: [...] }]
     filters: { id: "", name: "", status: "all", from: "", to: "" },
@@ -27,7 +29,14 @@
 
   const els = {};
 
-  document.addEventListener("DOMContentLoaded", init);
+  // Modal open/close request token: guards against a late-arriving
+  // response for a project the admin already closed/switched away from
+  // overwriting the currently displayed project's submissions.
+  let openRequestId = 0;
+
+  document.addEventListener("DOMContentLoaded", function () {
+    AdminReady.onReady(init);
+  });
 
   function init() {
     if (typeof supabaseClient === "undefined") {
@@ -172,7 +181,17 @@
     els.createBtn.textContent = "Үүсгэж байна…";
 
     try {
-      const nextId = nextProjectId();
+      // Project IDs are generated atomically by the database (a Postgres
+      // sequence via the generate_next_project_id() RPC), not by
+      // reading the currently loaded list and doing max()+1 client-side
+      // — that approach races when two admins create a link at once.
+      const { data: nextId, error: idError } = await supabaseClient.rpc("generate_next_project_id");
+      if (idError || !nextId) {
+        console.error(idError);
+        alert("Project ID үүсгэхэд алдаа гарлаа: " + (idError ? idError.message : "unknown error"));
+        return;
+      }
+
       const link = USER_PROJECT_BASE_URL + "?id=" + nextId;
 
       const { data, error } = await supabaseClient
@@ -198,15 +217,6 @@
       els.createBtn.disabled = false;
       els.createBtn.textContent = "+ Шинэ холбоос үүсгэх";
     }
-  }
-
-  function nextProjectId() {
-    let max = 0;
-    state.projects.forEach((p) => {
-      const m = /^(\d+)$/.exec(String(p.project_id).trim());
-      if (m) max = Math.max(max, parseInt(m[1], 10));
-    });
-    return String(max + 1).padStart(3, "0");
   }
 
   // ---------------------------------------------------------------
@@ -290,6 +300,7 @@
   // Submission view modal
   // ---------------------------------------------------------------
   async function openSubmissionModal(project) {
+    const requestId = ++openRequestId;
     els.modalBody.innerHTML = `
       <div class="flex items-center gap-3">
         <span class="flex h-12 w-12 items-center justify-center rounded-lg bg-[#0B2E4E] font-mono text-sm font-semibold text-white">${escapeHtml(project.project_id)}</span>
@@ -316,6 +327,11 @@
       .eq("project_id", project.project_id)
       .order("created_at", { ascending: false });
 
+    // The admin may have closed this modal or opened a different project
+    // while this request was in flight — if so, this response is stale
+    // and must never overwrite whatever is currently displayed.
+    if (requestId !== openRequestId) return;
+
     if (error) {
       console.error(error);
       listEl.innerHTML = '<p class="rounded-lg bg-red-50 p-3 text-sm text-red-700">Мэдээллийг ачаалахад алдаа гарлаа.</p>';
@@ -329,7 +345,9 @@
 
     listEl.innerHTML = "";
     for (const sub of subs) {
-      listEl.appendChild(await buildSubmissionCard(sub));
+      const card = await buildSubmissionCard(sub);
+      if (requestId !== openRequestId) return; // stale by the time file URLs resolved
+      listEl.appendChild(card);
     }
   }
 
@@ -399,6 +417,7 @@
   }
 
   function closeSubmissionModal() {
+    openRequestId++; // invalidate any in-flight request for this modal
     els.modal.classList.add("hidden");
     document.body.style.overflow = "";
   }
@@ -447,15 +466,5 @@
     if (v === null || v === undefined) return "—";
     if (typeof v === "object") return JSON.stringify(v);
     return String(v);
-  }
-
-  function escapeHtml(str) {
-    const div = document.createElement("div");
-    div.textContent = String(str);
-    return div.innerHTML;
-  }
-
-  function escapeAttr(str) {
-    return String(str).replace(/"/g, "&quot;");
   }
 })();

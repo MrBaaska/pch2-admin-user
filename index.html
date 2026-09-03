@@ -12,10 +12,33 @@
 </head>
 <body class="min-h-screen text-slate-800 antialiased">
 
+  <!-- ============ ADMIN LOGIN GATE ============ -->
+  <!-- Visible by default; admin-auth.js hides this and reveals the
+       app shell only after Supabase Auth + profiles.role='admin' +
+       profiles.is_active=true have been verified. -->
+  <div id="admin-login-screen" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-50 p-4">
+    <form id="admin-login-form" class="w-full max-w-sm rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+      <h1 class="font-display text-lg font-semibold text-slate-900">Admin нэвтрэх</h1>
+      <p class="mt-1 text-sm text-slate-500">Зөвхөн идэвхтэй admin эрхтэй хэрэглэгч нэвтэрнэ.</p>
+      <div class="mt-4 space-y-3">
+        <div>
+          <label for="admin-login-email" class="text-xs font-medium text-slate-600">И-мэйл</label>
+          <input id="admin-login-email" type="email" required autocomplete="username" class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-900 focus:border-[#0B2E4E]" />
+        </div>
+        <div>
+          <label for="admin-login-password" class="text-xs font-medium text-slate-600">Нууц үг</label>
+          <input id="admin-login-password" type="password" required autocomplete="current-password" class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-900 focus:border-[#0B2E4E]" />
+        </div>
+      </div>
+      <p id="admin-login-error" class="hidden mt-3 rounded-lg bg-red-50 px-3 py-2 text-xs text-red-700"></p>
+      <button id="admin-login-submit" type="submit" class="mt-4 w-full rounded-lg bg-[#0B2E4E] px-4 py-2.5 text-sm font-medium text-white hover:bg-[#0d3a63]">Нэвтрэх</button>
+    </form>
+  </div>
+
   <div class="flex min-h-screen">
 
     <!-- ============ SIDEBAR ============ -->
-    <aside class="hidden w-64 shrink-0 flex-col border-r border-slate-200 bg-[#0B2E4E] lg:flex">
+    <aside id="admin-sidebar" class="hidden w-64 shrink-0 flex-col border-r border-slate-200 bg-[#0B2E4E]">
       <div class="flex h-16 items-center gap-2.5 px-5 border-b border-white/10">
         <span class="flex h-8 w-8 items-center justify-center rounded-md bg-white/10 text-white">
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" class="h-4.5 w-4.5">
@@ -33,6 +56,10 @@
         <a href="#" id="nav-dashboard" class="mt-2 flex items-center gap-2.5 rounded-lg bg-white/10 px-3 py-2 text-sm font-medium text-white">
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" class="h-4 w-4"><rect x="3" y="3" width="7" height="7" rx="1.2" stroke="currentColor" stroke-width="1.8"/><rect x="14" y="3" width="7" height="7" rx="1.2" stroke="currentColor" stroke-width="1.8"/><rect x="3" y="14" width="7" height="7" rx="1.2" stroke="currentColor" stroke-width="1.8"/><rect x="14" y="14" width="7" height="7" rx="1.2" stroke="currentColor" stroke-width="1.8"/></svg>
           Dashboard
+        </a>
+        <a href="#admin-users-section" id="nav-users" class="mt-1 flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium text-white/70 hover:bg-white/10 hover:text-white">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" class="h-4 w-4"><circle cx="12" cy="8" r="3.2" stroke="currentColor" stroke-width="1.8"/><path d="M5 20c1.2-3.5 4-5.5 7-5.5s5.8 2 7 5.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+          Хэрэглэгчид (21)
         </a>
 
         <p class="mt-6 px-2 text-xs font-medium uppercase tracking-wide text-white/40">Хэсгүүд</p>
@@ -54,7 +81,7 @@
     </aside>
 
     <!-- ============ MAIN ============ -->
-    <div class="flex min-w-0 flex-1 flex-col">
+    <div id="admin-main-shell" class="hidden flex min-w-0 flex-1 flex-col">
 
       <!-- Top bar -->
       <header class="sticky top-0 z-20 flex h-16 items-center justify-between gap-4 border-b border-slate-200 bg-white/90 px-4 backdrop-blur sm:px-6">
@@ -70,6 +97,7 @@
             <p class="font-mono text-sm font-semibold text-slate-900" id="live-clock">--:--:--</p>
             <p class="text-xs text-slate-500" id="live-date">----.--.-- · ---</p>
           </div>
+          <button id="admin-logout-btn" type="button" class="hidden rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50">Гарах</button>
           <span class="hidden h-9 w-px bg-slate-200 sm:block"></span>
           <div class="flex h-9 w-9 items-center justify-center rounded-full bg-slate-100 text-sm font-semibold text-slate-600">
             АД
@@ -198,6 +226,45 @@
           <div id="links-empty-state" class="hidden mt-3 rounded-xl border border-dashed border-slate-300 bg-white py-10 text-center text-sm text-slate-500">Тохирох холбоос олдсонгүй.</div>
         </section>
 
+        <!-- ============ 21 USERS + APP_DATA (Phase B-2) ============ -->
+        <section id="admin-users-section" class="mt-10" aria-label="Хэрэглэгчидийн удирдлага">
+          <div>
+            <h2 class="font-display text-lg font-semibold text-slate-900">Хэрэглэгчид (21) — app_data</h2>
+            <p class="text-sm text-slate-500">Хэрэглэгчийг сонгож, түүний мөр (app_data)-ийг харж, засаварлана. Зөвхөн таны оүрийн өгөгдөл харагдана (RLS admin policy-гоор хязгаардагдаг).</p>
+          </div>
+
+          <div class="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-[320px_1fr]">
+            <!-- User list -->
+            <div class="rounded-xl border border-slate-200 bg-white">
+              <div class="border-b border-slate-100 px-4 py-3">
+                <label for="user-search-input" class="sr-only">Хэрэглэгч хайх</label>
+                <input id="user-search-input" type="search" placeholder="user_code эсвэл нэрээр хайх…" class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-[#0B2E4E] focus:bg-white" />
+              </div>
+              <p class="px-4 pt-3 text-xs text-slate-500" id="user-list-count">Ачаалж байна…</p>
+              <ul id="user-list" class="custom-scroll max-h-[520px] divide-y divide-slate-100 overflow-y-auto"></ul>
+              <div id="user-list-empty" class="hidden px-4 py-8 text-center text-sm text-slate-500">Хэрэглэгч олдсонгүй.</div>
+            </div>
+
+            <!-- Selected user app_data panel -->
+            <div class="rounded-xl border border-slate-200 bg-white p-4">
+              <div id="user-detail-empty" class="flex flex-col items-center justify-center py-16 text-center text-sm text-slate-500">
+                Зүүн талаас хэрэглэгчийг сонгоно уу.
+              </div>
+              <div id="user-detail-panel" class="hidden">
+                <div class="flex items-center gap-3">
+                  <span id="user-detail-avatar" class="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-[#0B2E4E] font-mono text-sm font-semibold text-white"></span>
+                  <div>
+                    <h3 id="user-detail-name" class="text-base font-semibold text-slate-900"></h3>
+                    <p id="user-detail-code" class="font-mono text-xs text-slate-500"></p>
+                  </div>
+                </div>
+                <p id="user-detail-status" class="mt-3 text-sm text-slate-500"></p>
+                <div id="app-data-list" class="mt-4 space-y-3"></div>
+              </div>
+            </div>
+          </div>
+        </section>
+
         <footer class="mt-10 border-t border-slate-200 pt-6 text-center text-xs text-slate-400">
           Энэ Admin систем нь зөвхөн навигацийн зориулалттай бөгөөд 20 хэсгийн дотоод өгөгдөл, LocalStorage-д хандахгүй.
         </footer>
@@ -235,31 +302,33 @@
     </div>
   </div>
 
-  <!-- ============ RIGHT-SIDE SCREEN: tsagNvvr.html ============ -->
+  <!-- ============ RIGHT-SIDE SCREEN: tsagNvvr.html (lazy-loaded, starts hidden) ============ -->
   <aside
     id="dashboard-screen-panel"
-    class="fixed right-0 top-0 z-40 flex h-full w-full max-w-xl translate-x-full flex-col border-l border-slate-200 bg-[#050510] shadow-xl transition-transform duration-300"
+    class="fixed inset-0 z-40 flex h-full w-full translate-x-full flex-col border-l border-slate-200 bg-[#050510] shadow-xl transition-transform duration-300"
     aria-hidden="true"
   >
-    <div class="flex items-center justify-between border-b border-white/10 px-4 py-3">
-      <p class="text-xs font-medium uppercase tracking-wide text-white/50">Dashboard — Цаг агаар</p>
+    <div class="flex items-center justify-end p-2">
       <button
         id="dashboard-screen-close"
         type="button"
         aria-label="Хаах"
-        class="flex h-8 w-8 items-center justify-center rounded-full text-white/60 hover:bg-white/10 hover:text-white"
+        class="flex h-9 w-9 items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20"
       >
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" class="h-4 w-4"><path d="M6 6l12 12M18 6 6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
       </button>
     </div>
-    <iframe id="dashboard-screen-frame" title="Цаг агаар" class="h-full w-full flex-1 border-0"></iframe>
+    <iframe id="dashboard-screen-frame" title="Цаг агаар" class="h-full w-full flex-1 border-0" src=""></iframe>
   </aside>
 
   <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+  <script src="./supabase-config.js"></script>
+  <script src="./security-utils.js"></script>
+  <script src="./admin-auth.js"></script>
   <script src="./projects.js"></script>
   <script src="./app.js"></script>
-  <script src="./supabase-config.js"></script>
   <script src="./admin-links.js"></script>
+  <script src="./admin-users.js"></script>
   <script>
     document.getElementById("footer-year").textContent = new Date().getFullYear();
 
