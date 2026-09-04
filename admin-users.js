@@ -188,6 +188,133 @@
     els.appDataList.appendChild(fragment);
   }
 
+  // --------------------------------------------------------
+  // Readable rendering helpers (arrays -> table, objects -> key/value,
+  // image data -> gallery). Raw JSON remains available via the toggle.
+  // All text is escaped; image srcs are limited to data:/blob:/https:.
+  // --------------------------------------------------------
+  function tryParseJson(text) {
+    if (typeof text !== "string") return null;
+    const trimmed = text.trim();
+    if (!trimmed || (trimmed[0] !== "{" && trimmed[0] !== "[")) return null;
+    try {
+      return JSON.parse(trimmed);
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function isImageString(value) {
+    if (typeof value !== "string") return false;
+    const v = value.trim().toLowerCase();
+    return v.startsWith("data:image/") || v.startsWith("blob:") || /^https?:\/\/.+\.(png|jpe?g|gif|webp|svg)(\?.*)?$/.test(v);
+  }
+
+  function safeImageSrc(value) {
+    const v = String(value).trim();
+    const lower = v.toLowerCase();
+    if (lower.startsWith("data:image/") || lower.startsWith("blob:")) return v;
+    if (/^https?:\/\//i.test(v)) return v;
+    return null;
+  }
+
+  function buildReadableView(parsed) {
+    // Array of image strings -> gallery
+    if (Array.isArray(parsed) && parsed.length > 0 && parsed.every((x) => typeof x === "string" && isImageString(x))) {
+      const wrap = document.createElement("div");
+      wrap.className = "mt-2 flex flex-wrap gap-2";
+      parsed.forEach((src) => {
+        const safe = safeImageSrc(src);
+        if (!safe) return;
+        const img = document.createElement("img");
+        img.src = safe;
+        img.alt = "image";
+        img.className = "h-20 w-auto rounded border border-slate-200 object-cover";
+        img.loading = "lazy";
+        wrap.appendChild(img);
+      });
+      return wrap;
+    }
+
+    // Array of objects -> table
+    if (Array.isArray(parsed) && parsed.length > 0 && parsed.every((x) => x && typeof x === "object" && !Array.isArray(x))) {
+      const cols = [];
+      parsed.forEach((row) => Object.keys(row).forEach((k) => { if (!cols.includes(k)) cols.push(k); }));
+      const wrap = document.createElement("div");
+      wrap.className = "mt-2 max-h-72 overflow-auto rounded border border-slate-200";
+      const table = document.createElement("table");
+      table.className = "min-w-full divide-y divide-slate-200 text-xs";
+      const thead = document.createElement("thead");
+      const htr = document.createElement("tr");
+      cols.forEach((c) => {
+        const th = document.createElement("th");
+        th.className = "bg-slate-50 px-2 py-1 text-left font-semibold text-slate-600";
+        th.textContent = c;
+        htr.appendChild(th);
+      });
+      thead.appendChild(htr);
+      const tbody = document.createElement("tbody");
+      tbody.className = "divide-y divide-slate-100";
+      parsed.forEach((row) => {
+        const tr = document.createElement("tr");
+        cols.forEach((c) => {
+          const td = document.createElement("td");
+          td.className = "px-2 py-1 text-slate-700 align-top";
+          const v = row[c];
+          td.textContent = (v === null || v === undefined) ? "" : (typeof v === "object" ? JSON.stringify(v) : String(v));
+          tr.appendChild(td);
+        });
+        tbody.appendChild(tr);
+      });
+      table.appendChild(thead);
+      table.appendChild(tbody);
+      wrap.appendChild(table);
+      return wrap;
+    }
+
+    // Plain object -> key/value list (images under keys rendered as thumbnails)
+    if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+      const wrap = document.createElement("dl");
+      wrap.className = "mt-2 max-h-72 overflow-auto rounded border border-slate-200 p-2 text-xs";
+      Object.keys(parsed).forEach((k) => {
+        const v = parsed[k];
+        const dt = document.createElement("dt");
+        dt.className = "font-semibold text-slate-600 mt-1";
+        dt.textContent = k;
+        wrap.appendChild(dt);
+        const dd = document.createElement("dd");
+        dd.className = "ml-2 text-slate-700";
+        if (isImageString(v)) {
+          const safe = safeImageSrc(v);
+          if (safe) {
+            const img = document.createElement("img");
+            img.src = safe;
+            img.alt = k;
+            img.className = "h-20 w-auto rounded border border-slate-200 object-cover";
+            dd.appendChild(img);
+          } else {
+            dd.textContent = String(v);
+          }
+        } else if (Array.isArray(v) && v.length && v.every((x) => typeof x === "string" && isImageString(x))) {
+          const g = document.createElement("div");
+          g.className = "flex flex-wrap gap-2 mt-1";
+          v.forEach((s) => { const safe = safeImageSrc(s); if (safe) { const i = document.createElement("img"); i.src = safe; i.className = "h-16 w-auto rounded border border-slate-200 object-cover"; g.appendChild(i); } });
+          dd.appendChild(g);
+        } else {
+          dd.textContent = (v === null || v === undefined) ? "" : (typeof v === "object" ? JSON.stringify(v) : String(v));
+        }
+        wrap.appendChild(dd);
+      });
+      return wrap;
+    }
+
+    // Primitives / anything else -> plain text block
+    const pre = document.createElement("pre");
+    pre.className = "mt-2 whitespace-pre-wrap rounded border border-slate-200 bg-slate-50 p-2 text-xs text-slate-700";
+    pre.textContent = (parsed === null || parsed === undefined) ? String(parsed) : (typeof parsed === "object" ? JSON.stringify(parsed, null, 2) : String(parsed));
+    return pre;
+  }
+
   function buildAppDataCard(row, thisRequestId) {
     const card = document.createElement("div");
     card.className = "rounded-lg border border-slate-200 p-3";
@@ -199,27 +326,46 @@
         </div>
         <span class="text-xs text-slate-400">Шинэчилсэн: ${formatDate(row.updated_at)}</span>
       </div>
-      <textarea class="mt-2 w-full rounded-lg border border-slate-200 bg-slate-50 p-2 font-mono text-xs text-slate-800 focus:border-[#0B2E4E] focus:bg-white" rows="4"></textarea>
+      <div class="readable-container"></div>
+      <textarea class="mt-2 hidden w-full rounded-lg border border-slate-200 bg-slate-50 p-2 font-mono text-xs text-slate-800 focus:border-[#0B2E4E] focus:bg-white" rows="6"></textarea>
       <div class="mt-2 flex items-center gap-2">
-        <button type="button" data-action="save" class="rounded-md bg-[#0B2E4E] px-3 py-1.5 text-xs font-medium text-white hover:bg-[#0d3a63]">Хадгалах</button>
+        <button type="button" data-action="toggle" class="rounded-md border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50">Raw JSON</button>
+        <button type="button" data-action="save" class="hidden rounded-md bg-[#0B2E4E] px-3 py-1.5 text-xs font-medium text-white hover:bg-[#0d3a63]">Хадгалах</button>
         <span class="save-status text-xs text-slate-500"></span>
       </div>
     `;
 
+    const readableContainer = card.querySelector(".readable-container");
+    const textarea = card.querySelector("textarea");
+    const toggleBtn = card.querySelector('[data-action="toggle"]');
+    const saveBtn = card.querySelector('[data-action="save"]');
+    const statusEl = card.querySelector(".save-status");
+
     // .value assignment is never HTML-parsed, so arbitrary app_data
     // content cannot inject markup here even though it is unescaped.
-    const textarea = card.querySelector("textarea");
-    textarea.value = row.data === null || row.data === undefined ? "" : String(row.data);
+    const rawText = row.data === null || row.data === undefined ? "" : String(row.data);
+    textarea.value = rawText;
 
-    const statusEl = card.querySelector(".save-status");
-    card.querySelector('[data-action="save"]').addEventListener("click", () => {
-      saveAppDataRow(row, textarea, statusEl, thisRequestId);
+    // Default: readable view (falls back to a text block when not JSON).
+    readableContainer.appendChild(buildReadableView(tryParseJson(rawText)));
+
+    let rawVisible = false;
+    toggleBtn.addEventListener("click", () => {
+      rawVisible = !rawVisible;
+      textarea.classList.toggle("hidden", !rawVisible);
+      saveBtn.classList.toggle("hidden", !rawVisible);
+      readableContainer.classList.toggle("hidden", rawVisible);
+      toggleBtn.textContent = rawVisible ? "Readable" : "Raw JSON";
+    });
+
+    saveBtn.addEventListener("click", () => {
+      saveAppDataRow(row, textarea, statusEl, thisRequestId, readableContainer);
     });
 
     return card;
   }
 
-  async function saveAppDataRow(row, textarea, statusEl, thisRequestId) {
+  async function saveAppDataRow(row, textarea, statusEl, thisRequestId, readableContainer) {
     if (thisRequestId !== requestId) return; // admin already switched to another user
 
     statusEl.textContent = "Хадгалж байна…";
@@ -242,6 +388,10 @@
 
     row.data = textarea.value;
     row.updated_at = nowIso;
+    if (readableContainer) {
+      readableContainer.innerHTML = "";
+      readableContainer.appendChild(buildReadableView(tryParseJson(textarea.value)));
+    }
     statusEl.textContent = "Хадгалагдлаа.";
     setTimeout(() => {
       statusEl.textContent = "";
