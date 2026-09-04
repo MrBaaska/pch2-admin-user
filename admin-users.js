@@ -56,6 +56,8 @@
     els.detailCode = document.getElementById("user-detail-code");
     els.detailStatus = document.getElementById("user-detail-status");
     els.appDataList = document.getElementById("app-data-list");
+    els.refreshBtn = document.getElementById("user-refresh-btn");
+    els.refreshStatus = document.getElementById("user-refresh-status");
   }
 
   function bindEvents() {
@@ -69,6 +71,41 @@
       state.query = e.target.value.trim().toLowerCase();
       renderUserList();
     });
+
+    if (els.refreshBtn) {
+      els.refreshBtn.addEventListener("click", onRefreshClick);
+    }
+  }
+
+  // Re-query Supabase app_data for the CURRENTLY selected user only, using the
+  // existing loadAppData(state.selectedUser) flow (owner_id = selectedUser.id).
+  async function onRefreshClick() {
+    if (!state.selectedUser) return;
+
+    els.refreshBtn.disabled = true;
+    const originalLabel = els.refreshBtn.textContent;
+    els.refreshBtn.textContent = "Сэргээж байна…";
+    if (els.refreshStatus) {
+      els.refreshStatus.classList.remove("text-red-600");
+      els.refreshStatus.textContent = "";
+    }
+
+    try {
+      await loadAppData(state.selectedUser);
+      if (els.refreshStatus) {
+        els.refreshStatus.textContent = "Мэдээлэл шинэчлэгдлээ.";
+        setTimeout(() => { els.refreshStatus.textContent = ""; }, 2500);
+      }
+    } catch (err) {
+      console.error("Refresh app_data failed:", err);
+      if (els.refreshStatus) {
+        els.refreshStatus.textContent = "Шинэчлэхэд алдаа гарлаа: " + (err && err.message ? err.message : err);
+        els.refreshStatus.classList.add("text-red-600");
+      }
+    } finally {
+      els.refreshBtn.disabled = false;
+      els.refreshBtn.textContent = originalLabel;
+    }
   }
 
   // ---------------------------------------------------------------
