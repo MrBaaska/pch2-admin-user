@@ -112,6 +112,7 @@
   // 21 users (public.profiles, role='user')
   // ---------------------------------------------------------------
   async function loadUsers() {
+    console.log("[ADMIN DEBUG] loadUsers started");
     els.listCount.textContent = "Ачаалж байна…";
 
     const { data, error } = await supabaseClient
@@ -120,6 +121,9 @@
       .eq("role", "user")
       .order("user_code", { ascending: true });
 
+    console.log("[ADMIN DEBUG] profiles query result:", data);
+    console.log("[ADMIN DEBUG] profiles error:", error);
+
     if (error) {
       console.error(error);
       els.listCount.textContent = "Алдаа гарлаа: хэрэглэгчдийг ачаалж чадсангүй.";
@@ -127,6 +131,8 @@
     }
 
     state.users = data || [];
+    console.log("[ADMIN DEBUG] user count:", state.users.length);
+    console.log("[ADMIN DEBUG] user codes:", state.users.map((u) => u.user_code));
     renderUserList();
   }
 
@@ -137,6 +143,8 @@
 
   function renderUserList() {
     const list = getFilteredUsers();
+    console.log("[ADMIN DEBUG] filtered user count:", list.length);
+    console.log("[ADMIN DEBUG] filtered user codes:", list.map((u) => u.user_code));
     els.listCount.textContent = `${list.length} / ${state.users.length} хэрэглэгч`;
     els.list.innerHTML = "";
 
@@ -178,6 +186,8 @@
   // ---------------------------------------------------------------
   async function selectUser(user) {
     console.log("[ADMIN ATTENDANCE DEBUG] selectUser clicked, user row from profiles list:", user);
+    console.log("[ADMIN DEBUG] selected user code:", user.user_code);
+    console.log("[ADMIN DEBUG] selected user.id:", user.id);
     state.selectedUser = user;
     renderUserList();
 
