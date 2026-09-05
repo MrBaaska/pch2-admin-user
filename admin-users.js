@@ -309,6 +309,44 @@
       return wrap;
     }
 
+    // Array of arrays of plain values (row/column text grids, e.g. anhaar.html's
+    // auditTableData) -> render as a bounded table instead of a raw JSON dump,
+    // since the previous fallback below made this data look "missing".
+    if (Array.isArray(parsed) && parsed.length > 0 && parsed.every((x) => Array.isArray(x))) {
+      const colCount = parsed.reduce((max, row) => Math.max(max, row.length), 0);
+      const wrap = document.createElement("div");
+      wrap.className = "mt-2 max-h-72 overflow-auto rounded border border-slate-200";
+      const table = document.createElement("table");
+      table.className = "min-w-full divide-y divide-slate-200 text-xs";
+      const tbody = document.createElement("tbody");
+      tbody.className = "divide-y divide-slate-100";
+      parsed.forEach((row) => {
+        const tr = document.createElement("tr");
+        for (let i = 0; i < colCount; i++) {
+          const td = document.createElement("td");
+          td.className = "px-2 py-1 text-slate-700 align-top";
+          const cell = row[i];
+          if (isImageString(cell)) {
+            const safe = safeImageSrc(cell);
+            if (safe) {
+              const img = document.createElement("img");
+              img.src = safe;
+              img.alt = "";
+              img.className = "h-16 w-auto rounded border border-slate-200 object-cover";
+              td.appendChild(img);
+            }
+          } else {
+            td.textContent = (cell === null || cell === undefined || cell === "") ? "—" : (typeof cell === "object" ? JSON.stringify(cell) : String(cell));
+          }
+          tr.appendChild(td);
+        }
+        tbody.appendChild(tr);
+      });
+      table.appendChild(tbody);
+      wrap.appendChild(table);
+      return wrap;
+    }
+
     // Plain object -> key/value list (images under keys rendered as thumbnails)
     if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
       const wrap = document.createElement("dl");
