@@ -138,7 +138,7 @@
 
   function getFilteredUsers() {
     if (!state.query) return state.users;
-    return state.users.filter((u) => `${u.user_code || ""} ${u.display_name || ""}`.toLowerCase().includes(state.query));
+    return state.users.filter((u) => `${u.user_code || ""} ${formatSectionLabel(u.user_code)} ${u.display_name || ""}`.toLowerCase().includes(state.query));
   }
 
   function renderUserList() {
@@ -159,6 +159,18 @@
     els.list.appendChild(fragment);
   }
 
+  // Display-only label (user_code 001-020 -> "PD-1-N"); anything else
+  // (e.g. U21) is shown as its own raw user_code, never renumbered.
+  // Purely cosmetic — never used for any query/owner_id/authorization logic.
+  function formatSectionLabel(userCode) {
+    const code = String(userCode || "");
+    if (/^\d{1,3}$/.test(code)) {
+      const n = parseInt(code, 10);
+      if (n >= 1 && n <= 20) return "PD-1-" + n;
+    }
+    return code;
+  }
+
   function buildUserRow(user) {
     const li = document.createElement("li");
     const isSelected = state.selectedUser && state.selectedUser.id === user.id;
@@ -171,7 +183,7 @@
       <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${isSelected ? "bg-[#0B2E4E] text-white" : "bg-slate-100 text-slate-600"} font-mono text-xs font-semibold">${escapeHtml(String(user.user_code || "?").slice(-2))}</span>
       <span>
         <span class="block text-sm font-medium text-slate-900">${escapeHtml(user.display_name || "(нэргүй)")}</span>
-        <span class="block font-mono text-xs text-slate-500">${escapeHtml(user.user_code || "")}</span>
+        <span class="block font-mono text-xs text-slate-500">${escapeHtml(formatSectionLabel(user.user_code))}</span>
       </span>
     `;
     button.addEventListener("click", () => selectUser(user));
@@ -195,7 +207,7 @@
     els.detailPanel.classList.remove("hidden");
     els.detailAvatar.textContent = String(user.user_code || "?").slice(-2);
     els.detailName.textContent = user.display_name || "(нэргүй)";
-    els.detailCode.textContent = user.user_code || "";
+    els.detailCode.textContent = formatSectionLabel(user.user_code);
     els.detailStatus.textContent = user.is_active ? "Идэвхтэй" : "Идэвхгүй";
     els.appDataList.innerHTML = '<p class="text-sm text-slate-500">Ачаалж байна…</p>';
 
