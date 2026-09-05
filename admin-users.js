@@ -390,6 +390,127 @@
     return pre;
   }
 
+  // Row/column grid data (currently only anhaar.html's "auditTableData":
+  // array of [requirement, content, note, auditResultCode, recommendation]).
+  // Detected by shape, not by storage_key name, so it stays part of the same
+  // generic buildReadableView dispatch rather than a parallel system.
+  const GRID_FIELD_DEFS = [
+    { label: "Үйл явц, шаардлагууд", type: "textarea" },
+    { label: "Агуулга", type: "textarea" },
+    { label: "Тэмдэглэл", type: "textarea" },
+    { label: "Аудитын үр дүн", type: "select", options: ["1", "2", "3", "4"] },
+    { label: "Сайжруулах зөвлөмж", type: "textarea" },
+  ];
+
+  function isGridShape(parsed) {
+    return Array.isArray(parsed) && parsed.length > 0 && parsed.every((x) => Array.isArray(x));
+  }
+
+  // Editable table for grid-shaped data. Saves by row.id (UPDATE, never
+  // INSERT), so the existing app_data row for this owner_id/project_id/
+  // storage_key is always reused and no duplicate can be created.
+  function buildEditableGridView(parsed, row, thisRequestId) {
+    const colCount = Math.max(GRID_FIELD_DEFS.length, parsed.reduce((max, r) => Math.max(max, r.length), 0));
+
+    const wrap = document.createElement("div");
+    wrap.className = "mt-2 max-h-96 overflow-auto rounded border border-slate-200";
+    const table = document.createElement("table");
+    table.className = "min-w-full divide-y divide-slate-200 text-xs";
+    const thead = document.createElement("thead");
+    const htr = document.createElement("tr");
+    for (let c = 0; c < colCount; c++) {
+      const th = document.createElement("th");
+      th.className = "sticky top-0 bg-slate-50 px-2 py-1 text-left font-semibold text-slate-600";
+      th.textContent = (GRID_FIELD_DEFS[c] && GRID_FIELD_DEFS[c].label) || ("Багана " + (c + 1));
+      htr.appendChild(th);
+    }
+    thead.appendChild(htr);
+
+    const tbody = document.createElement("tbody");
+    tbody.className = "divide-y divide-slate-100";
+    const cellInputs = [];
+    parsed.forEach((rowVals) => {
+      const tr = document.createElement("tr");
+      const rowInputs = [];
+      for (let c = 0; c < colCount; c++) {
+        const td = document.createElement("td");
+        td.className = "px-1 py-1 align-top";
+        const def = GRID_FIELD_DEFS[c];
+        const val = rowVals[c] === undefined || rowVals[c] === null ? "" : String(rowVals[c]);
+        let el;
+        if (def && def.type === "select") {
+          el = document.createElement("select");
+          el.className = "w-full rounded border border-slate-200 bg-white p-1 text-xs";
+          def.options.forEach((opt) => {
+            const o = document.createElement("option");
+            o.value = opt;
+            o.textContent = opt;
+            if (opt === val) o.selected = true;
+            el.appendChild(o);
+          });
+        } else {
+          el = document.createElement("textarea");
+          el.className = "w-full min-w-[140px] resize-y rounded border border-slate-200 bg-white p-1 text-xs";
+          el.rows = 2;
+          el.value = val;
+        }
+        td.appendChild(el);
+        tr.appendChild(td);
+        rowInputs.push(el);
+      }
+      cellInputs.push(rowInputs);
+      tbody.appendChild(tr);
+    });
+    table.appendChild(thead);
+    table.appendChild(tbody);
+    wrap.appendChild(table);
+
+    const footer = document.createElement("div");
+    footer.className = "mt-2 flex items-center gap-2";
+    const saveBtn = document.createElement("button");
+    saveBtn.type = "button";
+    saveBtn.className = "rounded-md bg-[#0B2E4E] px-3 py-1.5 text-xs font-medium text-white hover:bg-[#0d3a63]";
+    saveBtn.textContent = "Хадгалах";
+    const statusEl = document.createElement("span");
+    statusEl.className = "text-xs text-slate-500";
+    footer.appendChild(saveBtn);
+    footer.appendChild(statusEl);
+
+    saveBtn.addEventListener("click", async () => {
+      if (thisRequestId !== requestId) return; // admin already selected another user
+      saveBtn.disabled = true;
+      statusEl.classList.remove("text-red-600");
+      statusEl.textContent = "Хадгалж байна…";
+
+      const nextData = cellInputs.map((rowInputs) => rowInputs.map((el) => el.value));
+      const nowIso = new Date().toISOString();
+      const { error } = await supabaseClient
+        .from("app_data")
+        .update({ data: JSON.stringify(nextData), updated_at: nowIso })
+        .eq("id", row.id);
+
+      saveBtn.disabled = false;
+      if (thisRequestId !== requestId) return;
+
+      if (error) {
+        console.error(error);
+        statusEl.textContent = "Алдаа гарлаа: " + error.message;
+        statusEl.classList.add("text-red-600");
+        return;
+      }
+
+      row.data = JSON.stringify(nextData);
+      row.updated_at = nowIso;
+      statusEl.textContent = "Хадгалагдлаа.";
+      setTimeout(() => { statusEl.textContent = ""; }, 2000);
+    });
+
+    const container = document.createElement("div");
+    container.appendChild(wrap);
+    container.appendChild(footer);
+    return container;
+  }
+
   function buildAppDataCard(row, thisRequestId) {
     const card = document.createElement("div");
     card.className = "rounded-lg border border-slate-200 p-3";
@@ -421,8 +542,13 @@
     const rawText = row.data === null || row.data === undefined ? "" : String(row.data);
     textarea.value = rawText;
 
-    // Default: readable view (falls back to a text block when not JSON).
-    readableContainer.appendChild(buildReadableView(tryParseJson(rawText)));
+    // Default: readable view. Grid-shaped data (array-of-arrays, e.g.
+    // auditTableData) gets an editable table; everything else stays read-only
+    // (edit via the Raw JSON toggle below).
+    const initialParsed = tryParseJson(rawText);
+    readableContainer.appendChild(
+      isGridShape(initialParsed) ? buildEditableGridView(initialParsed, row, thisRequestId) : buildReadableView(initialParsed)
+    );
 
     let rawVisible = false;
     toggleBtn.addEventListener("click", () => {
@@ -465,7 +591,10 @@
     row.updated_at = nowIso;
     if (readableContainer) {
       readableContainer.innerHTML = "";
-      readableContainer.appendChild(buildReadableView(tryParseJson(textarea.value)));
+      const reparsed = tryParseJson(textarea.value);
+      readableContainer.appendChild(
+        isGridShape(reparsed) ? buildEditableGridView(reparsed, row, thisRequestId) : buildReadableView(reparsed)
+      );
     }
     statusEl.textContent = "Хадгалагдлаа.";
     setTimeout(() => {
