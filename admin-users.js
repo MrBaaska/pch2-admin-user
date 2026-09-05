@@ -522,7 +522,8 @@
       const { error } = await supabaseClient
         .from("app_data")
         .update({ data: JSON.stringify(nextData), updated_at: nowIso })
-        .eq("id", row.id);
+        .eq("id", row.id)
+        .eq("owner_id", state.selectedUser.id);
 
       saveBtn.disabled = false;
       if (thisRequestId !== requestId) return;
@@ -613,7 +614,8 @@
     const { error } = await supabaseClient
       .from("app_data")
       .update({ data: textarea.value, updated_at: nowIso })
-      .eq("id", row.id);
+      .eq("id", row.id)
+      .eq("owner_id", state.selectedUser.id);
 
     if (thisRequestId !== requestId) return;
 
