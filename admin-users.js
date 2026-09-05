@@ -177,6 +177,7 @@
   // authorized by the existing owner-OR-admin app_data RLS policy)
   // ---------------------------------------------------------------
   async function selectUser(user) {
+    console.log("[ADMIN ATTENDANCE DEBUG] selectUser clicked, user row from profiles list:", user);
     state.selectedUser = user;
     renderUserList();
 
@@ -194,11 +195,21 @@
   async function loadAppData(user) {
     const thisRequestId = ++requestId;
 
+    const { data: authData } = await supabaseClient.auth.getUser();
+    console.log("[ADMIN ATTENDANCE DEBUG] auth.uid():", authData && authData.user ? authData.user.id : null);
+    console.log("[ADMIN ATTENDANCE DEBUG] selected user object passed to loadAppData:", user);
+    console.log("[ADMIN ATTENDANCE DEBUG] user.id used for owner_id filter:", user.id);
+
     const { data, error } = await supabaseClient
       .from("app_data")
       .select("id, project_id, storage_key, data, created_at, updated_at")
       .eq("owner_id", user.id)
       .order("storage_key", { ascending: true });
+
+    console.log("[ADMIN ATTENDANCE DEBUG] query: app_data.select(...).eq('owner_id','" + user.id + "')");
+    console.log("[ADMIN ATTENDANCE DEBUG] error:", error);
+    console.log("[ADMIN ATTENDANCE DEBUG] returned rows count:", data ? data.length : 0);
+    console.log("[ADMIN ATTENDANCE DEBUG] returned storage_keys:", (data || []).map((r) => r.storage_key));
 
     if (thisRequestId !== requestId) return; // stale — admin already selected another user
 
@@ -214,6 +225,7 @@
 
   function renderAppDataList(thisRequestId) {
     els.appDataList.innerHTML = "";
+    console.log("[ADMIN ATTENDANCE DEBUG] renderAppDataList: state.appData length =", state.appData.length, "rows =", state.appData);
 
     if (state.appData.length === 0) {
       els.appDataList.innerHTML = '<p class="rounded-lg bg-slate-50 p-3 text-sm text-slate-500">Энэ хэрэглэгчид app_data бичлэг алга.</p>';
@@ -223,6 +235,7 @@
     const fragment = document.createDocumentFragment();
     state.appData.forEach((row) => fragment.appendChild(buildAppDataCard(row, thisRequestId)));
     els.appDataList.appendChild(fragment);
+    console.log("[ADMIN ATTENDANCE DEBUG] appended", state.appData.length, "card(s) to #app-data-list; DOM children now:", els.appDataList.children.length);
   }
 
   // --------------------------------------------------------
@@ -546,9 +559,11 @@
     // auditTableData) gets an editable table; everything else stays read-only
     // (edit via the Raw JSON toggle below).
     const initialParsed = tryParseJson(rawText);
+    console.log("[ADMIN ATTENDANCE DEBUG] buildAppDataCard storage_key=" + row.storage_key + " rawText.length=" + rawText.length + " parsed:", initialParsed);
     readableContainer.appendChild(
       isGridShape(initialParsed) ? buildEditableGridView(initialParsed, row, thisRequestId) : buildReadableView(initialParsed)
     );
+    console.log("[ADMIN ATTENDANCE DEBUG] storage_key=" + row.storage_key + " readable-container child count after render:", readableContainer.children.length);
 
     let rawVisible = false;
     toggleBtn.addEventListener("click", () => {
